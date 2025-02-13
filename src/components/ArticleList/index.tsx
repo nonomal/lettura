@@ -1,147 +1,86 @@
-import React, {
-	useEffect,
-	useState,
-	forwardRef,
-	useRef,
-	useImperativeHandle,
-	ForwardedRef,
-	createRef,
-} from "react";
+import React, { useEffect, useRef } from "react";
+import { motion } from "framer-motion";
 import { ArticleItem } from "../ArticleItem";
-import { Loading } from "../Loading";
-import { Article } from "../../db";
-import { useStore } from "../../hooks/useStore";
-import * as dataAgent from "../../helpers/dataAgent";
-import styles from "./articlelist.module.css";
-import { busChannel } from "../../helpers/busChannel";
+import { Skeleton } from "@radix-ui/themes";
+import { useIntersectionObserver } from "./useIntersectionObserver";
+import { ArticleResItem } from "@/db";
+import { Snail } from "lucide-react";
 
 export type ArticleListProps = {
-	feedUuid: string | null;
-	type: string | null;
-	feedUrl: string | null;
-	title: string | null;
+  feedUuid?: string;
+  type?: string;
+  title: string | null;
+  articles: ArticleResItem[];
+  size: any;
+  setSize: any;
+  isReachingEnd?: boolean;
+  isEmpty: boolean;
+  isLoading: boolean;
 };
 
 export interface ArticleListRefType {
-	getList: () => void;
-	markAllRead: () => void;
-	articlesRef: any;
+  getList: () => void;
+  markAllRead: () => void;
+  articlesRef: any;
+  innerRef: React.RefObject<HTMLDivElement>;
 }
 
-export const ArticleList = forwardRef(
-	(
-		props: ArticleListProps,
-		ref: ForwardedRef<ArticleListRefType>,
-	): JSX.Element => {
-		const { feedUuid } = props;
-		const store = useStore();
-		const [articleList, setArticleList] = useState<Article[]>([]);
-		const [loading, setLoading] = useState(false);
-		const innerRef = useRef<HTMLDivElement>(null);
-		const [articlesRef, setArticlesRef] = useState([]);
+export const ArticleList = React.memo(
+  React.forwardRef<HTMLDivElement, any>((props: ArticleListProps, ref) => {
+    const { articles, isEmpty, isLoading, isReachingEnd, size, setSize } = props;
+    const loadRef = useRef<HTMLDivElement | null>(null);
+    const entry = useIntersectionObserver(loadRef, {});
+    const loadRefVisible = !!entry?.isIntersecting;
 
-		const resetScrollTop = () => {
-			if (innerRef.current !== null) {
-				innerRef.current.scroll(0, 0);
-			}
-		};
+    const renderList = (): JSX.Element[] => {
+      return (articles || []).map((article: any, idx: number) => {
+        return (
+          <motion.div
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            initial={{ opacity: 0, y: 30 }}
+            key={article.title + idx}
+            className="w-full"
+          >
+            <ArticleItem article={article} />
+          </motion.div>
+        );
+      });
+    };
 
-		const getList = (feedUuid: string) => {
-			const filter: { read_status?: number; limit?: number } = {};
+    useEffect(() => {
+      if (loadRefVisible && !isReachingEnd) {
+        setSize(size + 1);
+      }
+    }, [loadRefVisible, isReachingEnd]);
 
-			filter.read_status = store.currentFilter.id;
-
-			setLoading(true);
-
-			dataAgent
-				.getArticleList(feedUuid, filter)
-				.then((res) => {
-					const { list } = res as { list: Article[] };
-					setArticleList(list);
-				})
-				.finally(() => {
-					setLoading(false);
-				})
-				.catch((err) => {
-					console.log("%c Line:71 🍎 err", "color:#ffdd4d", err);
-				});
-		};
-
-		const markAllRead = () => {
-			console.log("🚀 ~ file: index.tsx:71 ~ markAllRead ~ markAllRead");
-			dataAgent.markAllRead(feedUuid as string).then((res) => {
-				articleList.forEach((article) => {
-					article.read_status = 2;
-				});
-
-				setArticleList([...articleList]);
-
-				busChannel.emit("updateChannelUnreadCount", {
-					uuid: feedUuid as string,
-					action: "set",
-					count: 0,
-				});
-			});
-		};
-
-		useImperativeHandle(ref, () => {
-			return {
-				getList() {
-					getList(feedUuid || "");
-				},
-				markAllRead() {
-					markAllRead();
-				},
-				articlesRef,
-			};
-		});
-
-		useEffect(() => {
-			getList(feedUuid || "");
-		}, [feedUuid, store.currentFilter]);
-
-		const renderList = (): JSX.Element[] => {
-			return articleList.map((article: any, idx: number) => {
-				return (
-					<ArticleItem
-						ref={articlesRef[article.uuid]}
-						article={article}
-						highlight={store.article?.id === article.id}
-						key={article.id}
-					/>
-				);
-			});
-		};
-
-		useEffect(() => {
-			resetScrollTop();
-		}, []);
-
-		useEffect(() => {
-			resetScrollTop();
-		}, [feedUuid, articleList]);
-
-		useEffect(() => {
-			store.setArticleList(articleList);
-			const refs = articleList.reduce((acc: any, cur) => {
-				acc[cur.uuid] = createRef();
-
-				return acc;
-			}, {});
-
-			setArticlesRef(refs);
-		}, [articleList]);
-
-		return (
-			<div className={styles.container}>
-				<div className={styles.inner} ref={innerRef}>
-					{loading ? (
-						<Loading />
-					) : (
-						<ul className={styles.list}>{renderList()}</ul>
-					)}
-				</div>
-			</div>
-		);
-	},
+    return (
+      <div className="w-full" ref={ref}>
+        {isEmpty ? (
+          <div className="absolute top-1/2 -translate-y-1/2 w-full flex flex-col justify-center items-center gap-1 text-muted-foreground">
+            <Snail size={34} strokeWidth={1} />
+            <p>Yay, no matching items.</p>
+          </div>
+        ) : null}
+        <ul className="m-0 flex flex-col gap-[2px] pt-1 pr-0 pb-1 pl-1">{renderList()}</ul>
+        <div ref={loadRef} className="pt-1">
+          {isLoading && (
+            <div className="p-2 pl-6 grid gap-1 relative">
+              <Skeleton className="h-5 w-full" />
+              <div>
+                <Skeleton className="h-3 w-full" />
+              </div>
+              <div>
+                <Skeleton className="h-3 w-full" />
+              </div>
+              <div className="flex justify-between">
+                <Skeleton className="h-3 w-32" />
+                <Skeleton className="h-3 w-16" />
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  })
 );

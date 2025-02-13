@@ -1,82 +1,126 @@
-import React, { useEffect, useImperativeHandle, useRef, useState } from "react";
-import { useModal } from "../Modal/useModal";
-import { Input, Modal } from "@douyinfe/semi-ui";
+import React, { useEffect, useRef, useState, ChangeEvent } from "react";
 import * as dataAgent from "../../helpers/dataAgent";
-import styles from "./index.module.css";
-import { busChannel } from "../../helpers/busChannel";
+import { FolderResItem } from "@/db";
+import { useBearStore } from "@/stores";
+import { Dialog, TextField, Tooltip, Button } from "@radix-ui/themes";
 
-export const AddFolder = (props: any) => {
-	const { showStatus, showModal, hideModal, toggleModal } = useModal();
-	const [name, setName] = useState("");
-	const [loading, setLoading] = useState(false);
-	const [confirming, setConfirming] = useState(false);
-	const inputRef = useRef<HTMLInputElement>(null);
+export interface AddFolderProps {
+  action: "add" | "edit";
+  folder?: FolderResItem | null;
+  dialogStatus: boolean;
+  trigger?: React.ReactNode;
+  setDialogStatus: (status: boolean) => void;
+  afterConfirm?: () => void;
+  afterCancel?: () => void;
+}
 
-	useImperativeHandle(props.Aref, () => {
-		return {
-			status: showStatus,
-			showModal,
-			hideModal,
-			toggleModal,
-		};
-	});
+export const AddFolder = (props: AddFolderProps) => {
+  const { action, folder } = props;
+  console.log("%c Line:19 🥪 folder", "color:#ed9ec7", props);
+  const store = useBearStore((state) => ({
+    getSubscribes: state.getSubscribes,
+  }));
+  const { dialogStatus, setDialogStatus, afterConfirm, afterCancel, trigger } = props;
+  const [name, setName] = useState("");
+  const [title, setTitle] = useState("");
+  const [content, setContent] = useState("");
+  const [confirming, setConfirming] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
-	const handleNameChange = (value: string) => {
-		setName(value);
-	};
+  const handleNameChange = (value: string) => {
+    setName(value);
+  };
 
-	const handleCancel = () => {
-		setLoading(false);
-		setConfirming(false);
-		setName("");
-		toggleModal();
-	};
+  const handleCancel = () => {
+    setConfirming(false);
+    setName("");
+    setDialogStatus(false);
+    afterCancel && afterCancel();
+  };
 
-	const handleSave = async () => {
-		setConfirming(true);
+  const handleSave = async () => {
+    if (!name) {
+      return false;
+    }
 
-		dataAgent
-			.createFolder(name)
-			.then((res) => {
-				if (res > 0) {
-					busChannel.emit("getChannels");
-					handleCancel();
-				}
-			})
-			.finally(() => {
-				setConfirming(false);
-			});
-	};
+    setConfirming(true);
 
-	useEffect(() => {
-		if (showStatus && inputRef && inputRef.current) {
-			inputRef.current.focus();
-		}
-	}, [showStatus]);
+    let p: Promise<any> = Promise.resolve();
 
-	return (
-		<Modal
-			visible={showStatus}
-			title="Create Folder"
-			width="340"
-			confirmLoading={confirming}
-			onOk={handleSave}
-			onCancel={handleCancel}
-		>
-			<div className={styles.box}>
-				<div className={styles.item}>
-					<div className={styles.label}>Name</div>
-					<div className={styles.formItem}>
-						<Input
-							type="text"
-							style={{ width: "300px" }}
-							value={name}
-							onChange={handleNameChange}
-							ref={inputRef}
-						/>
-					</div>
-				</div>
-			</div>
-		</Modal>
-	);
+    if (action === "add") {
+      p = dataAgent.createFolder(name);
+    } else if (folder) {
+      p = dataAgent.updateFolder(folder.uuid, name);
+    }
+
+    p.then((res) => {
+      console.log("🚀 ~ file: index.tsx:59 ~ p.then ~ res:", res);
+      if (res[0] > 0) {
+        store.getSubscribes();
+        afterConfirm && afterConfirm();
+        handleCancel();
+      }
+    })
+      .catch((err) => {
+        console.log("🚀 ~ file: index.tsx:66 ~ p.then ~ err:", err);
+      })
+      .finally(() => {
+        setConfirming(false);
+      });
+  };
+
+  useEffect(() => {
+    if (action === "add") {
+      setTitle("Add Folder");
+      setContent("Organize your subscribes");
+    }
+    if (action === "edit") {
+      setTitle("Edit Folder");
+      setContent("Update your folder");
+    }
+  }, [action]);
+
+  useEffect(() => {
+    if (dialogStatus && inputRef && inputRef.current) {
+      inputRef.current.focus();
+    }
+
+    if (action === "edit" && folder) {
+      // @ts-ignore
+      setName(folder.name || folder.title);
+    }
+  }, [dialogStatus]);
+
+  return (
+    <Dialog.Root open={dialogStatus} onOpenChange={setDialogStatus}>
+      {trigger && (
+        <Tooltip content={title}>
+          <Dialog.Trigger>{trigger}</Dialog.Trigger>
+        </Tooltip>
+      )}
+      <Dialog.Content className="sm:max-w-[425px]">
+        <Dialog.Title className="lex items-center" size="6" mt="2" mb="1">
+          {title}
+        </Dialog.Title>
+        <Dialog.Description size="2" mb="4" color="gray">
+          {content}
+        </Dialog.Description>
+        <div className="py-3">
+          <TextField.Root
+            value={name}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => handleNameChange(e.target.value)}
+            ref={inputRef}
+          ></TextField.Root>
+          <div className="flex justify-end gap-3 mt-4">
+            <Dialog.Close>
+              <Button variant="soft">Cancel</Button>
+            </Dialog.Close>
+            <Button onClick={handleSave} disabled={confirming || !name} loading={confirming}>
+              {confirming ? "Saving" : "Save"}
+            </Button>
+          </div>
+        </div>
+      </Dialog.Content>
+    </Dialog.Root>
+  );
 };

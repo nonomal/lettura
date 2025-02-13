@@ -8,7 +8,7 @@
   },
   "package": {
     "productName": "Lettura",
-    "version": "0.1.0"
+    "version": "0.1.22"
   },
   "tauri": {
     "allowlist": {
@@ -18,10 +18,11 @@
       "http": {
         "request": true,
         "all": true,
-        "scope": ["https://**", "http://**"]
+        "scope": ["https://**", "http://**", "http://lettura./"]
       },
       "fs": {
-        "all": true
+        "all": true,
+        "scope": ["$DOWNLOAD/*"]
       },
       "dialog": {
         "all": true
@@ -64,11 +65,17 @@
       "csp": null
     },
     "updater": {
-      "active": false
+      "active": true,
+      "endpoints": [
+          "https://gist.githubusercontent.com/zhanglun/9094b65b31879a79063f396a254830e1/raw"
+      ],
+      "dialog": true,
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEE4MUNGMUQ0NTlCNEYyNzUKUldSMThyUloxUEVjcVBnQUpzVmZDNDVaSVVZSzh1eTFWd3E4QytXOFNuMXdIRy9wWis2SEhzc2MK"
     },
     "windows": [
       {
         "fullscreen": false,
+        "maximized": false,
         "height": 760,
         "decorations": true,
         "resizable": true,
@@ -76,6 +83,10 @@
         "width": 1440,
         "fileDropEnabled": false
       }
-    ]
+    ],
+    "systemTray": {
+      "iconPath": "icons/tray-mac.png",
+      "iconAsTemplate": true
+    }
   }
 }

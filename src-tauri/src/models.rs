@@ -1,47 +1,74 @@
-use super::schema::{articles, channels, feed_metas, folder_channel_relations, folders};
+use super::schema::{articles, feed_metas, feeds, folders};
 use diesel::sql_types::*;
 use serde::Serialize;
 
 #[derive(Debug, Clone, Queryable, Serialize, QueryableByName)]
-pub struct Channel {
+pub struct Feed {
   #[diesel(sql_type = Integer)]
   pub id: i32,
+
   #[diesel(sql_type = Text)]
   pub uuid: String,
+
   #[diesel(sql_type = Text)]
   pub title: String,
+
   #[diesel(sql_type = Text)]
   pub link: String,
+
   #[diesel(sql_type = Text)]
   pub feed_url: String,
+
   #[diesel(sql_type = Text)]
-  pub image: String,
+  pub feed_type: String,
+
   #[diesel(sql_type = Text)]
   pub description: String,
+
   #[diesel(sql_type = Text)]
   pub pub_date: String,
-  #[diesel(sql_type = Integer)]
-  pub sync_interval: i32,
+
   #[diesel(sql_type = Text)]
-  pub last_sync_date: String,
+  pub updated: String,
+
+  #[diesel(sql_type = Text)]
+  pub logo: String,
+
+  #[diesel(sql_type = Integer)]
+  pub health_status: i32,
+
+  #[diesel(sql_type = Text)]
+  pub failure_reason: String,
+
   #[diesel(sql_type = Integer)]
   pub sort: i32,
+
+  #[diesel(sql_type = Integer)]
+  pub sync_interval: i32,
+
+  #[diesel(sql_type = Text)]
+  pub last_sync_date: String,
+
   #[diesel(sql_type = Text)]
   pub create_date: String,
+
   #[diesel(sql_type = Text)]
   pub update_date: String,
 }
 
-#[derive(Debug, Clone, Insertable)]
-#[diesel(table_name = channels)]
-pub struct NewChannel {
+#[derive(Debug, Clone, Serialize, Insertable)]
+#[diesel(table_name = feeds)]
+pub struct NewFeed {
   pub uuid: String,
+  pub feed_type: String,
   pub title: String,
   pub link: String,
-  pub image: String,
+  pub logo: String,
   pub feed_url: String,
   pub description: String,
   pub pub_date: String,
+  pub updated: String,
+  pub sort: i32,
 }
 
 #[derive(Debug, Queryable, Serialize, QueryableByName)]
@@ -49,9 +76,9 @@ pub struct FeedMeta {
   #[diesel(sql_type = Integer)]
   pub id: i32,
   #[diesel(sql_type = Text)]
-  pub child_uuid: String,
+  pub uuid: String,
   #[diesel(sql_type = Text)]
-  pub parent_uuid: String,
+  pub folder_uuid: Option<String>,
   #[diesel(sql_type = Integer)]
   pub sort: i32,
   #[diesel(sql_type = Text)]
@@ -63,47 +90,65 @@ pub struct FeedMeta {
 #[derive(Debug, Insertable)]
 #[diesel(table_name = feed_metas)]
 pub struct NewFeedMeta {
-  pub child_uuid: String,
-  pub parent_uuid: String,
+  pub uuid: String,
+  pub folder_uuid: String,
   pub sort: i32,
 }
 
 #[derive(Debug, Queryable, Serialize, Associations, QueryableByName)]
-#[diesel(belongs_to(Channel, foreign_key = uuid))]
+#[diesel(belongs_to(Feed, foreign_key = uuid))]
 pub struct Article {
   #[diesel(sql_type = Integer)]
   pub id: i32,
+
   #[diesel(sql_type = Text)]
   pub uuid: String,
-  #[diesel(sql_type = Text)]
-  pub channel_uuid: String,
+
   #[diesel(sql_type = Text)]
   pub title: String,
+
   #[diesel(sql_type = Text)]
   pub link: String,
+
   #[diesel(sql_type = Text)]
   pub feed_url: String,
+
+  #[diesel(sql_type = Text)]
+  pub feed_uuid: String,
+
   #[diesel(sql_type = Text)]
   pub description: String,
-  #[diesel(sql_type = Text)]
-  pub content: String,
-  #[diesel(sql_type = Text)]
-  pub pub_date: String,
+
   #[diesel(sql_type = Text)]
   pub author: String,
+
+  #[diesel(sql_type = Text)]
+  pub pub_date: String,
+
+  #[diesel(sql_type = Text)]
+  pub content: String,
+
   #[diesel(sql_type = Text)]
   pub create_date: String,
+
   #[diesel(sql_type = Text)]
   pub update_date: String,
+
   #[diesel(sql_type = Integer)]
   pub read_status: i32,
+
+  #[diesel(sql_type = Text)]
+  pub media_object: Option<String>,
+
+  #[diesel(sql_type = Integer)]
+  pub starred: i32,
 }
 
 #[derive(Debug, Insertable, Clone)]
 #[diesel(table_name = articles)]
 pub struct NewArticle {
   pub uuid: String,
-  pub channel_uuid: String,
+  pub feed_uuid: String,
   pub title: String,
   pub link: String,
   pub feed_url: String,
@@ -111,6 +156,7 @@ pub struct NewArticle {
   pub content: String,
   pub author: String,
   pub pub_date: String,
+  pub media_object: String,
 }
 
 #[derive(Debug, Queryable, QueryableByName, Clone, Serialize)]
@@ -135,22 +181,4 @@ pub struct NewFolder {
   pub uuid: String,
   pub name: String,
   pub sort: i32,
-}
-
-#[derive(Debug, Queryable, Clone)]
-pub struct FolderChannelRelation {
-  #[diesel(sql_type = Integer)]
-  pub id: i32,
-  #[diesel(sql_type = Text)]
-  pub folder_uuid: String,
-  #[diesel(sql_type = Text)]
-  pub channel_uuid: String,
-  #[diesel(sql_type = Text)]
-  pub create_date: String,
-}
-#[derive(Debug, Insertable, Clone)]
-#[diesel(table_name = folder_channel_relations)]
-pub struct NewFolderChannelRelation {
-  pub channel_uuid: String,
-  pub folder_uuid: String,
 }

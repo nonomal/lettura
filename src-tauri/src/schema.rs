@@ -4,43 +4,27 @@ diesel::table! {
     articles (id) {
         id -> Integer,
         uuid -> Text,
-        channel_uuid -> Text,
         title -> Text,
         link -> Text,
         feed_url -> Text,
+        feed_uuid -> Text,
         description -> Text,
-        content -> Text,
-        pub_date -> Timestamp,
         author -> Text,
+        pub_date -> Timestamp,
+        content -> Text,
         create_date -> Timestamp,
         update_date -> Timestamp,
         read_status -> Integer,
-    }
-}
-
-diesel::table! {
-    channels (id) {
-        id -> Integer,
-        uuid -> Text,
-        title -> Text,
-        link -> Text,
-        feed_url -> Text,
-        image -> Text,
-        description -> Text,
-        pub_date -> Timestamp,
-        sync_interval -> Integer,
-        last_sync_date -> Timestamp,
-        sort -> Integer,
-        create_date -> Timestamp,
-        update_date -> Timestamp,
+        media_object -> Nullable<Text>,
+        starred -> Integer,
     }
 }
 
 diesel::table! {
     feed_metas (id) {
         id -> Integer,
-        child_uuid -> Text,
-        parent_uuid -> Text,
+        uuid -> Text,
+        folder_uuid -> Nullable<Text>,
         sort -> Integer,
         create_date -> Timestamp,
         update_date -> Timestamp,
@@ -48,11 +32,24 @@ diesel::table! {
 }
 
 diesel::table! {
-    folder_channel_relations (id) {
+    feeds (id) {
         id -> Integer,
-        folder_uuid -> Text,
-        channel_uuid -> Text,
+        uuid -> Text,
+        title -> Text,
+        link -> Text,
+        feed_url -> Text,
+        feed_type -> Text,
+        description -> Text,
+        pub_date -> Timestamp,
+        updated -> Timestamp,
+        logo -> Text,
+        health_status -> Integer,
+        failure_reason -> Text,
+        sort -> Integer,
+        sync_interval -> Integer,
+        last_sync_date -> Timestamp,
         create_date -> Timestamp,
+        update_date -> Timestamp,
     }
 }
 
@@ -69,8 +66,7 @@ diesel::table! {
 
 diesel::allow_tables_to_appear_in_same_query!(
     articles,
-    channels,
     feed_metas,
-    folder_channel_relations,
+    feeds,
     folders,
 );

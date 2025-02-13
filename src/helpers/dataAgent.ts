@@ -1,40 +1,58 @@
 import { invoke } from "@tauri-apps/api";
-import { Channel, Folder } from "../db";
+import { Article, ArticleResItem, Channel, FeedResItem, FolderResItem } from "../db";
+import { request } from "@/helpers/request";
+import { AxiosRequestConfig, AxiosResponse } from "axios";
 
 export const getChannels = async (
-	filter: any,
-): Promise<{ list: (Channel & { parent_uuid: String })[] }> => {
-	return invoke("get_channels", { filter });
+  filter: any
+): Promise<AxiosResponse<{ list: (Channel & { parent_uuid: String })[] }>> => {
+  return request.get("feeds", {
+    params: {
+      filter,
+    },
+  });
 };
 
-export const getFeeds = async (): Promise<Channel[]> => {
-	return invoke("get_feeds");
+export const getSubscribes = async (): Promise<AxiosResponse<FeedResItem[]>> => {
+  return request.get("subscribes");
 };
 
 export const createFolder = async (name: string): Promise<number> => {
-	return invoke("create_folder", { name });
+  return invoke("create_folder", { name });
 };
 
-export const getFolders = async (): Promise<Folder[]> => {
-	return invoke("get_folders");
+export const updateFolder = async (
+  uuid: string,
+  name: string
+): Promise<number> => {
+  return invoke("update_folder", { uuid, name });
+};
+
+export const getFolders = async ():  Promise<AxiosResponse<FolderResItem[]>> => {
+  return request.get("folders", {});
 };
 
 export const updateFeedSort = async (
-	sorts: { uuid: string; sort: number; item_type: string }[],
+  sorts: {
+    item_type: string;
+    uuid: string;
+    folder_uuid: string;
+    sort: number;
+  }[]
 ): Promise<any> => {
-	return invoke("update_feed_sort", { sorts });
+  return request.post("update-feed-sort", sorts);
 };
 
 export const moveChannelIntoFolder = async (
-	channelUuid: string,
-	folderUuid: string,
-	sort: number,
+  channelUuid: string,
+  folderUuid: string,
+  sort: number
 ): Promise<any> => {
-	return invoke("move_channel_into_folder", {
-		channelUuid,
-		folderUuid,
-		sort,
-	});
+  return invoke("move_channel_into_folder", {
+    channelUuid,
+    folderUuid,
+    sort,
+  });
 };
 
 /**
@@ -42,83 +60,139 @@ export const moveChannelIntoFolder = async (
  * @param {String} uuid  channel 的 uuid
  */
 export const deleteChannel = async (uuid: string) => {
-	return invoke("delete_channel", { uuid });
+  return request.delete(`feeds/${ uuid }`);
 };
 
 export const deleteFolder = async (uuid: string) => {
-	return invoke("delete_folder", { uuid });
+  return invoke("delete_folder", { uuid });
 };
 
-export const updateCountWithChannel = async (feedUrl: string): Promise<any> => {
-	return {};
+export const getArticleList = async (
+  filter: any
+) => {
+  const req = request.get("articles", {
+    params: {
+      ...filter,
+    },
+  });
+
+  return req;
 };
 
-export const importChannels = async (list: string[]) => {
-	return invoke("import_channels", { list });
+export const fetchFeed = async (url: string): Promise<[ any, string ]> => {
+  return invoke("fetch_feed", { url });
 };
 
-export const getArticleList = async (uuid: string, filter: any) => {
-	return invoke("get_articles", { uuid, filter });
+export const subscribeFeed = async (url: string): Promise<[ FeedResItem, number, string ]> => {
+  return invoke("add_feed", { url });
 };
 
-export const fetchFeed = async (
-	url: string,
-): Promise<{ Atom?: any; RSS?: any }> => {
-	return invoke("fetch_feed", { url });
+export const syncFeed = async (
+  feed_type: string,
+  uuid: string
+): Promise<AxiosResponse<{ [key: string]: [ string, number, string ] }>> => {
+  return request.get(`/feeds/${ uuid }/sync`, {
+    params: {
+      feed_type,
+    },
+  });
 };
 
-export const addChannel = async (url: string): Promise<number> => {
-	return invoke("add_channel", { url });
+export const getUnreadTotal = async (): Promise<
+  AxiosResponse<{ [key: string]: number }>
+> => {
+  return request.get("unread-total");
 };
 
-export const syncArticlesWithChannelUuid = async (
-	feedType: string,
-	uuid: string,
-): Promise<number> => {
-	return invoke("sync_articles_with_channel_uuid", { feedType, uuid });
-};
-
-export const getUnreadTotal = async (): Promise<{ [key: string]: number }> => {
-	return invoke("get_unread_total");
+export const getCollectionMetas = async (): Promise<
+  AxiosResponse<{
+    [key: string]: number;
+  }>
+> => {
+  return request.get("collection-metas");
 };
 
 export const updateArticleReadStatus = async (
-	article_uuid: string,
-	read_status: number,
+  article_uuid: string,
+  read_status: number
 ) => {
-	return invoke("update_article_read_status", {
-		uuid: article_uuid,
-		status: read_status,
-	});
+  return request.post(`/articles/${ article_uuid }/read`, {
+    read_status
+  });
 };
 
-export const markAllRead = async (uuid: string) => {
-	return invoke("mark_all_read", {
-		channelUuid: uuid,
-	});
+export const updateArticleStarStatus = async (
+  article_uuid: string,
+  star_status: number
+) => {
+  return request.post(`/articles/${ article_uuid }/star`, {
+    starred: star_status
+  });
+};
+
+
+export const markAllRead = async (body: {
+  uuid?: string;
+  isToday?: boolean;
+  isAll?: boolean;
+}): Promise<AxiosResponse<number>> => {
+  return request.post("/mark-all-as-read", body);
 };
 
 export const getUserConfig = async (): Promise<any> => {
-	return invoke("get_user_config");
+  return request.get("/user-config");
 };
 
 export const updateUserConfig = async (cfg: any): Promise<any> => {
-	return invoke("update_user_config", {
-		userCfg: cfg,
-	});
-};
-
-export const updateProxy = async (cfg: LocalProxy): Promise<any> => {
-	return invoke("update_proxy", {
-		ip: cfg.ip,
-		port: cfg.port,
-	});
+  return request.post("/user-config", cfg)
 };
 
 export const updateThreads = async (threads: number): Promise<any> => {
-	return invoke("update_threads", { threads });
+  return invoke("update_threads", { threads });
+};
+
+export const updateTheme = async (theme: string): Promise<any> => {
+  return invoke("update_theme", { theme });
+};
+
+export const updateInterval = async (interval: number): Promise<any> => {
+  return invoke("update_interval", { interval });
 };
 
 export const initProcess = async (): Promise<any> => {
-	return invoke("init_process", {});
+  return invoke("init_process", {});
+};
+
+export const getArticleDetail = async (
+  uuid: string,
+  config: AxiosRequestConfig
+): Promise<AxiosResponse<ArticleResItem>> => {
+  return request.get(`articles/${ uuid }`, config);
+};
+
+export const getBestImage = async (
+  url: String
+): Promise<AxiosResponse<string>> => {
+  return request.get(`image-proxy`, {
+    params: {
+      url,
+    },
+  });
+};
+
+export const getPageSources = async (
+  url: string
+): Promise<AxiosResponse<string>> => {
+  return request.get(`article-proxy`, {
+    params: {
+      url,
+    },
+  });
+};
+
+export const updateIcon = async (
+  uuid: String,
+  url: string
+): Promise<string> => {
+  return invoke("update_icon", { uuid, url });
 };

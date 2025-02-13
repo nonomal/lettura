@@ -1,9 +1,27 @@
-import { defineConfig } from "vite";
+import path from 'path';
+import {defineConfig} from "vite";
 import react from "@vitejs/plugin-react";
+import checker from 'vite-plugin-checker';
+import {VitePWA} from "vite-plugin-pwa";
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react(),
+    VitePWA({
+      strategies: 'injectManifest',
+      srcDir: 'src/worker',
+      filename: 'sw.ts',
+      injectRegister: "auto",
+      registerType: 'autoUpdate',
+      devOptions: {
+        enabled: true,
+      }
+    }),
+    checker({
+      typescript: true
+    })
+  ],
 
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
   // prevent vite from obscuring rust errors
@@ -19,9 +37,15 @@ export default defineConfig({
   build: {
     // Tauri supports es2021
     target: ["es2021", "chrome100", "safari13"],
+    outDir: 'build',
     // don't minify for debug builds
     minify: !process.env.TAURI_DEBUG ? "esbuild" : false,
     // produce sourcemaps for debug builds
     sourcemap: !!process.env.TAURI_DEBUG,
   },
+  resolve: {
+    alias: {
+      "@": path.resolve(__dirname, "src"),
+    }
+  }
 });
